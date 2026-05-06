@@ -64,23 +64,22 @@ A minimal demo showing how **Red Hat Connectivity Link** (lightweight API manage
 ```bash
 # cert-manager (required by Connectivity Link)
 oc apply -f operators/00-cert-manager.yaml
-
-# Wait for cert-manager to be ready
 oc wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=120s
 
 # Connectivity Link (installs Authorino, Limitador, and DNS operators automatically)
+# Note: apply the Subscription/OperatorGroup first, wait for the operator, then the Kuadrant CR activates it
 oc apply -f operators/01-connectivity-link.yaml
+oc wait --for=jsonpath={.status.installPlanRef.name} subscription rhcl-operator -n kuadrant-system --timeout=60s
+oc wait kuadrant/kuadrant --for="condition=Ready=true" -n kuadrant-system --timeout=300s
 
 # Red Hat build of Apicurio Registry
 oc apply -f operators/02-apicurio-registry.yaml
 
 # Verify all operators are installed
-oc get csv -A | grep -E 'connectivity-link|service-registry|cert-manager'
+oc get csv -A | grep -E 'rhcl\|apicurio\|cert-manager'
 ```
 
 ## Step 1: Deploy Apicurio Registry
-
-Replace `<cluster-domain>` in `apicurio/02-apicurio-registry.yaml` with your cluster's apps domain.
 
 ```bash
 oc apply -f apicurio/02-apicurio-registry.yaml

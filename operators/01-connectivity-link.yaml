@@ -1,32 +1,41 @@
 # Red Hat Connectivity Link 1.3
-# Prerequisites: cert-manager operator must be installed first (see 00-cert-manager.yaml)
+# Prerequisites: cert-manager Operator for Red Hat OpenShift (see 00-cert-manager.yaml)
 # The Connectivity Link operator automatically installs:
 #   - Authorino Operator (authentication/authorization)
 #   - Limitador Operator (rate limiting)
 #   - DNS Operator
+# Docs: https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.3/html-single/installing_connectivity_link/index
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: connectivity-link
+  name: kuadrant-system
   labels:
     app.kubernetes.io/part-of: incident-api-demo
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
-  name: connectivity-link
-  namespace: connectivity-link
-spec: {}
+  name: kuadrant
+  namespace: kuadrant-system
+spec:
+  upgradeStrategy: Default
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: connectivity-link
-  namespace: connectivity-link
+  name: rhcl-operator
+  namespace: kuadrant-system
 spec:
-  channel: stable-v1.3
-  name: connectivity-link
+  channel: stable
+  installPlanApproval: Automatic
+  name: rhcl-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  installPlanApproval: Automatic
+---
+# After the operator is ready, create the Kuadrant CR to activate Connectivity Link
+apiVersion: kuadrant.io/v1beta1
+kind: Kuadrant
+metadata:
+  name: kuadrant
+  namespace: kuadrant-system

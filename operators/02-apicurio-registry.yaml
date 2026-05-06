@@ -1,4 +1,5 @@
 # Red Hat build of Apicurio Registry 3.1
+# Docs: https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry/3.1/html-single/installing_and_deploying_apicurio_registry_on_openshift/index
 ---
 apiVersion: v1
 kind: Namespace
@@ -19,11 +20,11 @@ spec:
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: service-registry-operator
+  name: apicurio-registry
   namespace: apicurio-registry
 spec:
-  channel: "3.x"
-  name: service-registry-operator
+  channel: "2.x"
+  name: apicurio-registry
   source: redhat-operators
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic

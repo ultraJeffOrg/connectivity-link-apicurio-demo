@@ -1,16 +1,16 @@
-# Requires: Red Hat build of Apicurio Registry operator installed from OperatorHub
+# Requires: Red Hat build of Apicurio Registry operator installed (see operators/02-apicurio-registry.yaml)
 # Docs: https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry/3.1
 apiVersion: registry.apicur.io/v1
-kind: ApicurioRegistry3
+kind: ApicurioRegistry
 metadata:
   name: apicurio-registry
   namespace: apicurio-registry
 spec:
-  app:
-    host: apicurio-registry.apps.<cluster-domain>
+  configuration:
+    persistence: sql
     sql:
       dataSource:
-        url: jdbc:postgresql://apicurio-db:5432/apicurio
+        url: jdbc:postgresql://apicurio-db.apicurio-registry.svc:5432/apicurio
         userName: apicurio
         password: changeme
 ---
