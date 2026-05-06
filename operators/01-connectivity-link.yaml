@@ -1,0 +1,32 @@
+# Red Hat Connectivity Link 1.3
+# Prerequisites: cert-manager operator must be installed first (see 00-cert-manager.yaml)
+# The Connectivity Link operator automatically installs:
+#   - Authorino Operator (authentication/authorization)
+#   - Limitador Operator (rate limiting)
+#   - DNS Operator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: connectivity-link
+  labels:
+    app.kubernetes.io/part-of: incident-api-demo
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: connectivity-link
+  namespace: connectivity-link
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: connectivity-link
+  namespace: connectivity-link
+spec:
+  channel: stable-v1.3
+  name: connectivity-link
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

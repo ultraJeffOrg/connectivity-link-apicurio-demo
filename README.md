@@ -30,25 +30,25 @@ A minimal demo showing how **Red Hat Connectivity Link** (lightweight API manage
 ## Prerequisites
 
 - OpenShift 4.16+ cluster
-- **Red Hat Connectivity Link** operator installed from OperatorHub (installs Authorino, Limitador, and DNS operators automatically)
-- **Red Hat build of Apicurio Registry** operator installed from OperatorHub
 - `oc` CLI logged in to the cluster
 - An [Anthropic API key](https://console.anthropic.com/) for the AI consumer script
 
 ## Project structure
 
 ```
+├── operators/                   # Operator installations (apply first)
+│   ├── 00-cert-manager.yaml     # cert-manager (Connectivity Link prerequisite)
+│   ├── 01-connectivity-link.yaml
+│   └── 02-apicurio-registry.yaml
 ├── sample-api/                  # The incident management API
 │   ├── server.js                # Express app
 │   ├── openapi.yaml             # OpenAPI 3.0 spec
 │   ├── package.json
 │   └── Containerfile
-├── apicurio/                    # Apicurio Registry deployment
-│   ├── 01-namespace.yaml
+├── apicurio/                    # Apicurio Registry instance + seed script
 │   ├── 02-apicurio-registry.yaml
 │   └── 03-seed-registry.sh     # Uploads the spec to the registry
 ├── connectivity-link/           # Gateway API + Connectivity Link policies
-│   ├── 00-namespace.yaml
 │   ├── 01-gateway.yaml
 │   ├── 02-httproute.yaml
 │   ├── 03-rate-limit-policy.yaml
@@ -59,12 +59,30 @@ A minimal demo showing how **Red Hat Connectivity Link** (lightweight API manage
     └── package.json
 ```
 
+## Step 0: Install the operators
+
+```bash
+# cert-manager (required by Connectivity Link)
+oc apply -f operators/00-cert-manager.yaml
+
+# Wait for cert-manager to be ready
+oc wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=120s
+
+# Connectivity Link (installs Authorino, Limitador, and DNS operators automatically)
+oc apply -f operators/01-connectivity-link.yaml
+
+# Red Hat build of Apicurio Registry
+oc apply -f operators/02-apicurio-registry.yaml
+
+# Verify all operators are installed
+oc get csv -A | grep -E 'connectivity-link|service-registry|cert-manager'
+```
+
 ## Step 1: Deploy Apicurio Registry
 
 Replace `<cluster-domain>` in `apicurio/02-apicurio-registry.yaml` with your cluster's apps domain.
 
 ```bash
-oc apply -f apicurio/01-namespace.yaml
 oc apply -f apicurio/02-apicurio-registry.yaml
 oc wait --for=condition=Ready pod -l app=apicurio-db -n apicurio-registry --timeout=120s
 ```
@@ -101,7 +119,7 @@ podman push quay.io/<your-org>/incident-api:latest
 cd ..
 
 # Deploy
-oc apply -f connectivity-link/00-namespace.yaml
+oc new-project incident-api || true
 oc apply -f connectivity-link/05-deployment.yaml
 oc apply -f connectivity-link/01-gateway.yaml
 oc apply -f connectivity-link/02-httproute.yaml
@@ -151,6 +169,7 @@ node fetch-and-query.js "Show me how to get all open high-severity incidents"
 
 | Talking point | Where to show it |
 |---|---|
+| **GitOps-ready operator install** | `operators/` — Subscription manifests in Git, not click-ops in the console |
 | **Gateway API is the standard** | `01-gateway.yaml`, `02-httproute.yaml` — plain Kubernetes Gateway API, no vendor lock-in |
 | **Policy attachment pattern** | `03-rate-limit-policy.yaml`, `04-auth-policy.yaml` — policies attach to routes via `targetRef`, not embedded in app code |
 | **API key auth with zero app changes** | The incident API has no auth code at all — Connectivity Link handles it at the gateway |
