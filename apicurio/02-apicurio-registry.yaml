@@ -1,0 +1,63 @@
+# Requires: Red Hat build of Apicurio Registry operator installed from OperatorHub
+# Docs: https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry/3.1
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry3
+metadata:
+  name: apicurio-registry
+  namespace: apicurio-registry
+spec:
+  app:
+    host: apicurio-registry.apps.<cluster-domain>
+    sql:
+      dataSource:
+        url: jdbc:postgresql://apicurio-db:5432/apicurio
+        userName: apicurio
+        password: changeme
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apicurio-db
+  namespace: apicurio-registry
+  labels:
+    app: apicurio-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apicurio-db
+  template:
+    metadata:
+      labels:
+        app: apicurio-db
+    spec:
+      containers:
+        - name: postgresql
+          image: registry.redhat.io/rhel9/postgresql-16:latest
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRESQL_USER
+              value: apicurio
+            - name: POSTGRESQL_PASSWORD
+              value: changeme
+            - name: POSTGRESQL_DATABASE
+              value: apicurio
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/pgsql/data
+      volumes:
+        - name: db-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apicurio-db
+  namespace: apicurio-registry
+spec:
+  selector:
+    app: apicurio-db
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -1,0 +1,12 @@
+{
+  "name": "ai-consumer",
+  "version": "1.0.0",
+  "description": "Pulls OpenAPI specs from Apicurio Registry and uses them as context for an AI model",
+  "main": "fetch-and-query.js",
+  "scripts": {
+    "start": "node fetch-and-query.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0"
+  }
+}

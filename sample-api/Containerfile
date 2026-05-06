@@ -1,0 +1,10 @@
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY server.js .
+COPY openapi.yaml .
+
+EXPOSE 3000
+CMD ["node", "server.js"]

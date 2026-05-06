@@ -1,0 +1,21 @@
+# Rate limiting via Connectivity Link (Limitador)
+# Limits API traffic to 50 requests per 10 seconds per client IP.
+apiVersion: kuadrant.io/v1
+kind: RateLimitPolicy
+metadata:
+  name: incident-api-ratelimit
+  namespace: incident-api
+  labels:
+    app.kubernetes.io/part-of: incident-api-demo
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: incident-api-route
+  limits:
+    per-client:
+      rates:
+        - limit: 50
+          window: 10s
+      counters:
+        - expression: request.headers["x-forwarded-for"]

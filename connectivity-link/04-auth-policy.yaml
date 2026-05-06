@@ -1,0 +1,45 @@
+# API key authentication via Connectivity Link (Authorino)
+# Requires a valid API key in the x-api-key header.
+apiVersion: kuadrant.io/v1
+kind: AuthPolicy
+metadata:
+  name: incident-api-auth
+  namespace: incident-api
+  labels:
+    app.kubernetes.io/part-of: incident-api-demo
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: incident-api-route
+  rules:
+    authentication:
+      api-key:
+        apiKey:
+          selector:
+            matchLabels:
+              app.kubernetes.io/component: api-key
+          allNamespaces: false
+        credentials:
+          customHeader:
+            name: x-api-key
+    response:
+      success:
+        headers:
+          x-auth-identity:
+            plain:
+              expression: auth.identity.metadata.annotations["api-consumer"]
+---
+# Sample API key secret — in production, generate a real key
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-api-key
+  namespace: incident-api
+  labels:
+    app.kubernetes.io/component: api-key
+  annotations:
+    api-consumer: demo-client
+type: Opaque
+stringData:
+  api_key: demo-key-12345

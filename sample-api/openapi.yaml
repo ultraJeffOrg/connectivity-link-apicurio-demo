@@ -1,0 +1,163 @@
+openapi: "3.0.3"
+info:
+  title: Incident Management API
+  description: >
+    A simple incident management service for tracking operational incidents.
+    Used to demonstrate Red Hat Connectivity Link and Red Hat build of Apicurio Registry.
+  version: "1.0.0"
+  contact:
+    name: API Support
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /api/incidents:
+    get:
+      summary: List all incidents
+      operationId: listIncidents
+      parameters:
+        - name: severity
+          in: query
+          description: Filter by severity level
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [open, investigating, resolved, closed]
+      responses:
+        "200":
+          description: A list of incidents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Incident"
+    post:
+      summary: Report a new incident
+      operationId: createIncident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewIncident"
+      responses:
+        "201":
+          description: Incident created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+        "400":
+          description: Invalid input
+  /api/incidents/{id}:
+    get:
+      summary: Get an incident by ID
+      operationId: getIncident
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A single incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+        "404":
+          description: Incident not found
+    patch:
+      summary: Update an incident
+      operationId: updateIncident
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncidentUpdate"
+      responses:
+        "200":
+          description: Incident updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+        "404":
+          description: Incident not found
+  /healthz:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Service is healthy
+components:
+  schemas:
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "inc-001"
+        title:
+          type: string
+          example: "Network outage in east region"
+        description:
+          type: string
+          example: "Multiple customers reporting connectivity issues"
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        status:
+          type: string
+          enum: [open, investigating, resolved, closed]
+        reportedBy:
+          type: string
+          example: "ops-team"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, title, severity, status, createdAt]
+    NewIncident:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        reportedBy:
+          type: string
+      required: [title, severity]
+    IncidentUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        status:
+          type: string
+          enum: [open, investigating, resolved, closed]
