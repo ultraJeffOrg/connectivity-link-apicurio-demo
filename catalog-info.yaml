@@ -1,0 +1,21 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: connectivity-link-apicurio-demo
+  description: Demo of Red Hat Connectivity Link and Apicurio Registry for lightweight API management with AI-powered API discovery
+  annotations:
+    backstage.io/kubernetes-id: connectivity-link-apicurio-demo
+    github.com/project-slug: ultraJeffOrg/connectivity-link-apicurio-demo
+  tags:
+    - api-management
+    - apicurio
+    - connectivity-link
+    - openshift
+  links:
+    - url: https://github.com/ultraJeffOrg/connectivity-link-apicurio-demo
+      title: GitHub Repo
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: user:default/admin
