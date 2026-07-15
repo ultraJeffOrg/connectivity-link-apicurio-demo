@@ -1,18 +1,14 @@
-# Requires: Red Hat Connectivity Link 1.3 operator installed from OperatorHub
-# This creates an Envoy-based gateway managed by Connectivity Link.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: incident-api-gateway
   namespace: incident-api
-  labels:
-    app.kubernetes.io/part-of: incident-api-demo
 spec:
-  gatewayClassName: kuadrant-multi-istio
   listeners:
     - name: http
       port: 80
       protocol: HTTP
+      hostname: incidents.sandbox4020.opentlc.com
       allowedRoutes:
         namespaces:
           from: Same

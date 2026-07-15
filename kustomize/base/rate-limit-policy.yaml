@@ -1,5 +1,3 @@
-# Rate limiting via Connectivity Link (Limitador)
-# Limits API traffic to 50 requests per 10 seconds per client IP.
 apiVersion: kuadrant.io/v1
 kind: RateLimitPolicy
 metadata:

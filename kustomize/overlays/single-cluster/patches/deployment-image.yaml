@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-api
+  namespace: incident-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: incident-api
+          image: quay.io/<your-org>/incident-api:latest

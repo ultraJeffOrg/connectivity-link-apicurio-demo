@@ -1,0 +1,16 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: incident-api-gateway
+  namespace: incident-api
+  labels:
+    app.kubernetes.io/part-of: incident-api-demo
+spec:
+  gatewayClassName: kuadrant-multi-istio
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same

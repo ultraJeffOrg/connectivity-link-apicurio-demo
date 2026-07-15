@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(oc get *)",
+      "Bash(oc logs *)",
+      "Bash(oc whoami *)",
+      "Bash(oc describe *)",
+      "Bash(kustomize build *)"
+    ]
+  }
+}

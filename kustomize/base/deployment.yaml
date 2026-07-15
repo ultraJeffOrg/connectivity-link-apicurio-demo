@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: incident-api
-          image: quay.io/<your-org>/incident-api:latest
+          image: quay.io/REPLACE_ORG/incident-api:latest
           ports:
             - containerPort: 3000
           livenessProbe:
@@ -47,15 +47,3 @@ spec:
               drop: [ALL]
             seccompProfile:
               type: RuntimeDefault
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: incident-api
-  namespace: incident-api
-spec:
-  selector:
-    app: incident-api
-  ports:
-    - port: 3000
-      targetPort: 3000

@@ -1,0 +1,13 @@
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry
+metadata:
+  name: apicurio-registry
+  namespace: apicurio-registry
+spec:
+  configuration:
+    persistence: sql
+    sql:
+      dataSource:
+        url: jdbc:postgresql://apicurio-db.apicurio-registry.svc:5432/apicurio
+        userName: apicurio
+        password: changeme

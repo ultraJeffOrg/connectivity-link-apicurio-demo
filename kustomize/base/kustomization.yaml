@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - gateway.yaml
+  - httproute.yaml
+  - rate-limit-policy.yaml
+  - auth-policy.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/component: api-key
+  annotations:
+    api-consumer: demo-client
+secretGenerator:
+  - name: demo-api-key
+    namespace: incident-api
+    type: Opaque
+    literals:
+      - api_key=demo-key-12345

@@ -1,0 +1,20 @@
+apiVersion: kuadrant.io/v1
+kind: DNSPolicy
+metadata:
+  name: incident-api-dns
+  namespace: incident-api
+  labels:
+    app.kubernetes.io/part-of: incident-api-demo
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: incident-api-gateway
+  providerRefs:
+    - name: aws-route53-credentials
+  healthCheck:
+    path: /healthz
+    port: 80
+    protocol: HTTP
+    failureThreshold: 3
+    interval: 60s

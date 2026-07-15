@@ -9,7 +9,7 @@ spec:
   parentRefs:
     - name: incident-api-gateway
   hostnames:
-    - incidents.apps.<cluster-domain>
+    - incidents.apps.REPLACE_CLUSTER_DOMAIN
   rules:
     - matches:
         - path:

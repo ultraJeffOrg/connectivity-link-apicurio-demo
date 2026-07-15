@@ -1,0 +1,267 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: incident-api-spoke-config
+  namespace: incident-api-policies
+  annotations:
+    policy.open-cluster-management.io/standards: ""
+    policy.open-cluster-management.io/categories: ""
+    policy.open-cluster-management.io/controls: ""
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+
+    # 1. Create the incident-api namespace on spokes
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: incident-api-namespace
+        spec:
+          remediationAction: enforce
+          severity: low
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: incident-api
+                  labels:
+                    app.kubernetes.io/part-of: incident-api-demo
+
+    # 2. Application workload (Deployment, Service, API key)
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: incident-api-app
+        spec:
+          remediationAction: enforce
+          severity: low
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: incident-api
+                  namespace: incident-api
+                  labels:
+                    app: incident-api
+                    app.kubernetes.io/part-of: incident-api-demo
+                spec:
+                  replicas: 1
+                  selector:
+                    matchLabels:
+                      app: incident-api
+                  template:
+                    metadata:
+                      labels:
+                        app: incident-api
+                    spec:
+                      containers:
+                        - name: incident-api
+                          image: quay.io/ultraJeffOrg/incident-api:latest
+                          ports:
+                            - containerPort: 3000
+                          livenessProbe:
+                            httpGet:
+                              path: /healthz
+                              port: 3000
+                            initialDelaySeconds: 5
+                            periodSeconds: 10
+                          readinessProbe:
+                            httpGet:
+                              path: /healthz
+                              port: 3000
+                            initialDelaySeconds: 3
+                            periodSeconds: 5
+                          resources:
+                            requests:
+                              cpu: 100m
+                              memory: 128Mi
+                            limits:
+                              cpu: 250m
+                              memory: 256Mi
+                          securityContext:
+                            runAsNonRoot: true
+                            allowPrivilegeEscalation: false
+                            capabilities:
+                              drop: [ALL]
+                            seccompProfile:
+                              type: RuntimeDefault
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: incident-api
+                  namespace: incident-api
+                spec:
+                  selector:
+                    app: incident-api
+                  ports:
+                    - port: 3000
+                      targetPort: 3000
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: demo-api-key
+                  namespace: incident-api
+                  labels:
+                    app.kubernetes.io/component: api-key
+                  annotations:
+                    api-consumer: demo-client
+                type: Opaque
+                stringData:
+                  api_key: demo-key-12345
+
+    # 3. Gateway, routing, RHCL policies, and DNS
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: incident-api-gateway-config
+        spec:
+          remediationAction: enforce
+          severity: low
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: gateway.networking.k8s.io/v1
+                kind: Gateway
+                metadata:
+                  name: incident-api-gateway
+                  namespace: incident-api
+                  labels:
+                    app.kubernetes.io/part-of: incident-api-demo
+                spec:
+                  gatewayClassName: kuadrant-multi-istio
+                  listeners:
+                    - name: http
+                      port: 80
+                      protocol: HTTP
+                      hostname: incidents.sandbox4020.opentlc.com
+                      allowedRoutes:
+                        namespaces:
+                          from: Same
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: gateway.networking.k8s.io/v1
+                kind: HTTPRoute
+                metadata:
+                  name: incident-api-route
+                  namespace: incident-api
+                  labels:
+                    app.kubernetes.io/part-of: incident-api-demo
+                spec:
+                  parentRefs:
+                    - name: incident-api-gateway
+                  hostnames:
+                    - incidents.sandbox4020.opentlc.com
+                  rules:
+                    - matches:
+                        - path:
+                            type: PathPrefix
+                            value: /api
+                      backendRefs:
+                        - name: incident-api
+                          port: 3000
+                    - matches:
+                        - path:
+                            type: Exact
+                            value: /healthz
+                      backendRefs:
+                        - name: incident-api
+                          port: 3000
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: kuadrant.io/v1
+                kind: RateLimitPolicy
+                metadata:
+                  name: incident-api-ratelimit
+                  namespace: incident-api
+                  labels:
+                    app.kubernetes.io/part-of: incident-api-demo
+                spec:
+                  targetRef:
+                    group: gateway.networking.k8s.io
+                    kind: HTTPRoute
+                    name: incident-api-route
+                  limits:
+                    per-client:
+                      rates:
+                        - limit: 50
+                          window: 10s
+                      counters:
+                        - expression: request.headers["x-forwarded-for"]
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: kuadrant.io/v1
+                kind: AuthPolicy
+                metadata:
+                  name: incident-api-auth
+                  namespace: incident-api
+                  labels:
+                    app.kubernetes.io/part-of: incident-api-demo
+                spec:
+                  targetRef:
+                    group: gateway.networking.k8s.io
+                    kind: HTTPRoute
+                    name: incident-api-route
+                  rules:
+                    authentication:
+                      api-key:
+                        apiKey:
+                          selector:
+                            matchLabels:
+                              app.kubernetes.io/component: api-key
+                          allNamespaces: false
+                        credentials:
+                          customHeader:
+                            name: x-api-key
+                    response:
+                      success:
+                        headers:
+                          x-auth-identity:
+                            plain:
+                              expression: auth.identity.metadata.annotations["api-consumer"]
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: kuadrant.io/v1
+                kind: DNSPolicy
+                metadata:
+                  name: incident-api-dns
+                  namespace: incident-api
+                  labels:
+                    app.kubernetes.io/part-of: incident-api-demo
+                spec:
+                  targetRef:
+                    group: gateway.networking.k8s.io
+                    kind: Gateway
+                    name: incident-api-gateway
+                  providerRefs:
+                    - name: aws-route53-credentials
+                  healthCheck:
+                    path: /healthz
+                    port: 80
+                    protocol: HTTP
+                    failureThreshold: 3
+                    interval: 60s
+            # Route53 credentials pulled from hub's existing secret via hub-templates
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: aws-route53-credentials
+                  namespace: incident-api
+                type: kuadrant.io/aws
+                data:
+                  AWS_ACCESS_KEY_ID: '{{hub fromSecret "kube-system" "rhdp" "aws_access_key_id" hub}}'
+                  AWS_SECRET_ACCESS_KEY: '{{hub fromSecret "kube-system" "rhdp" "aws_secret_access_key" hub}}'
+                  AWS_REGION: dXMtZWFzdC0x

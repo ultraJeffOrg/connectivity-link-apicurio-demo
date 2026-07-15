@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: incident-api
+  namespace: incident-api
+spec:
+  selector:
+    app: incident-api
+  ports:
+    - port: 3000
+      targetPort: 3000
