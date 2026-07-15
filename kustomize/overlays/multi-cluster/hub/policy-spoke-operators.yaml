@@ -92,8 +92,26 @@ spec:
                   source: redhat-operators
                   sourceNamespace: openshift-marketplace
 
-    # 3. Kuadrant CR to activate Connectivity Link
-    #    Uses dependency to wait for the CRD to exist
+    # 3. GatewayClass — triggers Ingress Operator to install lightweight Istio
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: gateway-api-class
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: gateway.networking.k8s.io/v1
+                kind: GatewayClass
+                metadata:
+                  name: openshift-default
+                spec:
+                  controllerName: openshift.io/gateway-controller/v1
+
+    # 4. Kuadrant CR to activate Connectivity Link
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy

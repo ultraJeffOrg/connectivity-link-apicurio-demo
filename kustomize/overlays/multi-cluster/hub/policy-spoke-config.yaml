@@ -146,7 +146,7 @@ spec:
                   labels:
                     app.kubernetes.io/part-of: incident-api-demo
                 spec:
-                  gatewayClassName: kuadrant-multi-istio
+                  gatewayClassName: openshift-default
                   listeners:
                     - name: http
                       port: 80
