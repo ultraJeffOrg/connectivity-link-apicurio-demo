@@ -10,6 +10,12 @@ metadata:
 spec:
   remediationAction: enforce
   disabled: false
+  dependencies:
+    - apiVersion: policy.open-cluster-management.io/v1
+      kind: Policy
+      name: incident-api-spoke-operators
+      namespace: incident-api-policies
+      compliance: Compliant
   policy-templates:
 
     # 1. Create the incident-api namespace on spokes

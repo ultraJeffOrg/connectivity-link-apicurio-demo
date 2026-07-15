@@ -1,0 +1,112 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: incident-api-spoke-operators
+  namespace: incident-api-policies
+  annotations:
+    policy.open-cluster-management.io/standards: ""
+    policy.open-cluster-management.io/categories: ""
+    policy.open-cluster-management.io/controls: ""
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+
+    # 1. cert-manager operator (RHCL prerequisite)
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: cert-manager-operator
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: cert-manager-operator
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1
+                kind: OperatorGroup
+                metadata:
+                  name: cert-manager-operator
+                  namespace: cert-manager-operator
+                spec:
+                  targetNamespaces:
+                    - cert-manager-operator
+                  upgradeStrategy: Default
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: openshift-cert-manager-operator
+                  namespace: cert-manager-operator
+                spec:
+                  channel: stable-v1
+                  name: openshift-cert-manager-operator
+                  source: redhat-operators
+                  sourceNamespace: openshift-marketplace
+                  installPlanApproval: Automatic
+
+    # 2. Red Hat Connectivity Link operator
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: connectivity-link-operator
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: kuadrant-system
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1
+                kind: OperatorGroup
+                metadata:
+                  name: kuadrant
+                  namespace: kuadrant-system
+                spec:
+                  upgradeStrategy: Default
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: rhcl-operator
+                  namespace: kuadrant-system
+                spec:
+                  channel: stable
+                  installPlanApproval: Automatic
+                  name: rhcl-operator
+                  source: redhat-operators
+                  sourceNamespace: openshift-marketplace
+
+    # 3. Kuadrant CR to activate Connectivity Link
+    #    Uses dependency to wait for the CRD to exist
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: connectivity-link-instance
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: kuadrant.io/v1beta1
+                kind: Kuadrant
+                metadata:
+                  name: kuadrant
+                  namespace: kuadrant-system
