@@ -3,12 +3,11 @@ kind: PlacementBinding
 metadata:
   name: incident-api-spoke-binding
   namespace: incident-api-policies
-spec:
-  placementRef:
-    apiGroup: cluster.open-cluster-management.io
-    kind: Placement
-    name: incident-api-spoke-placement
-  subjects:
-    - apiGroup: policy.open-cluster-management.io
-      kind: Policy
-      name: incident-api-spoke-config
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: incident-api-spoke-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: incident-api-spoke-config

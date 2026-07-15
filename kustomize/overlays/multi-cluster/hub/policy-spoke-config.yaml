@@ -252,7 +252,11 @@ spec:
                     protocol: HTTP
                     failureThreshold: 3
                     interval: 60s
-            # Route53 credentials pulled from hub's existing secret via hub-templates
+            # Route53 credentials pulled from policy namespace secret via hub-templates
+            # Prerequisite: copy credentials into this namespace:
+            #   oc get secret rhdp -n kube-system -o json | \
+            #     jq '{apiVersion,kind,type,metadata:{name:"aws-route53-credentials",namespace:"incident-api-policies"},data:{aws_access_key_id:.data.aws_access_key_id,aws_secret_access_key:.data.aws_secret_access_key}}' | \
+            #     oc apply -f -
             - complianceType: musthave
               objectDefinition:
                 apiVersion: v1
@@ -262,6 +266,6 @@ spec:
                   namespace: incident-api
                 type: kuadrant.io/aws
                 data:
-                  AWS_ACCESS_KEY_ID: '{{hub fromSecret "kube-system" "rhdp" "aws_access_key_id" hub}}'
-                  AWS_SECRET_ACCESS_KEY: '{{hub fromSecret "kube-system" "rhdp" "aws_secret_access_key" hub}}'
+                  AWS_ACCESS_KEY_ID: '{{hub fromSecret "incident-api-policies" "aws-route53-credentials" "aws_access_key_id" hub}}'
+                  AWS_SECRET_ACCESS_KEY: '{{hub fromSecret "incident-api-policies" "aws-route53-credentials" "aws_secret_access_key" hub}}'
                   AWS_REGION: dXMtZWFzdC0x
