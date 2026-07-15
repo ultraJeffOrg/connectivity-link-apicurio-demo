@@ -69,7 +69,7 @@ spec:
                     spec:
                       containers:
                         - name: incident-api
-                          image: quay.io/ultraJeffOrg/incident-api:latest
+                          image: quay.io/jefrankl/incident-api:latest
                           ports:
                             - containerPort: 3000
                           livenessProbe:

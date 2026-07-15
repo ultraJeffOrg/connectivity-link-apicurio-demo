@@ -8,7 +8,7 @@ resources:
 #   - ../../../components/apicurio
 images:
   - name: quay.io/REPLACE_ORG/incident-api
-    newName: quay.io/ultraJeffOrg/incident-api
+    newName: quay.io/jefrankl/incident-api
     newTag: latest
 patches:
   - path: patches/httproute-hostname.yaml
