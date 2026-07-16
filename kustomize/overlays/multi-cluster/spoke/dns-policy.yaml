@@ -12,6 +12,10 @@ spec:
     name: incident-api-gateway
   providerRefs:
     - name: aws-route53-credentials
+  loadBalancing:
+    defaultGeo: true
+    geo: US
+    weight: 120
   healthCheck:
     path: /healthz
     port: 80

@@ -219,6 +219,8 @@ spec:
                     group: gateway.networking.k8s.io
                     kind: HTTPRoute
                     name: incident-api-route
+                  when:
+                    - predicate: "request.path != '/healthz'"
                   rules:
                     authentication:
                       api-key:
@@ -252,6 +254,10 @@ spec:
                     name: incident-api-gateway
                   providerRefs:
                     - name: aws-route53-credentials
+                  loadBalancing:
+                    defaultGeo: true
+                    geo: US
+                    weight: 120
                   healthCheck:
                     path: /healthz
                     port: 80
