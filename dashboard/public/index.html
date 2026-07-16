@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RHCL Multi-Cluster Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>CONNECTIVITY LINK</h1>
+    <span class="subtitle">Multi-Cluster Failover Dashboard</span>
+    <span id="connection-status" class="status-dot"></span>
+  </header>
+
+  <main>
+    <!-- Section 1: Multi-Cluster Failover -->
+    <section id="failover">
+      <h2>Multi-Cluster Failover</h2>
+      <div id="cluster-cards" class="card-grid"></div>
+      <div class="dns-panel">
+        <h3>DNS Resolution <button onclick="refreshDns()" class="btn-sm">Refresh</button>
+          <button onclick="testEndpoint()" class="btn-sm" style="margin-left:4px">Test Endpoint</button>
+        </h3>
+        <div id="dns-status">Loading...</div>
+      </div>
+      <div id="failover-log" class="request-log" style="display:none"></div>
+    </section>
+
+    <!-- Section 2: RHCL Policies -->
+    <section id="policies">
+      <h2>RHCL Policy Showcase</h2>
+      <div class="policy-grid">
+        <div class="policy-card">
+          <h3>Rate Limiting</h3>
+          <pre id="ratelimit-yaml" class="yaml-block">Loading...</pre>
+          <div class="policy-actions">
+            <button onclick="testRateLimit()" class="btn btn-pink">Blast 60 Requests</button>
+          </div>
+          <div id="ratelimit-result" class="result-summary"></div>
+          <div id="ratelimit-log" class="request-log" style="display:none"></div>
+        </div>
+        <div class="policy-card">
+          <h3>API Key Authentication</h3>
+          <pre id="auth-yaml" class="yaml-block">Loading...</pre>
+          <div class="policy-actions">
+            <button onclick="testAuth(true)" class="btn btn-success">With API Key</button>
+            <button onclick="testAuth(false)" class="btn btn-danger">Without API Key</button>
+          </div>
+          <div id="auth-log" class="request-log" style="display:none"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Incident API -->
+    <section id="incidents">
+      <h2>Incident API Explorer</h2>
+      <div class="api-endpoints">
+        <h3>Available Endpoints</h3>
+        <div class="endpoint-list">
+          <div class="endpoint-item" onclick="hitEndpoint('GET', '/api/incidents')">
+            <span class="method method-GET">GET</span>
+            <span>/api/incidents</span>
+            <span style="color:var(--text-dim);margin-left:auto;font-size:11px">List all incidents</span>
+          </div>
+          <div class="endpoint-item" onclick="hitEndpoint('GET', '/api/incidents?severity=critical')">
+            <span class="method method-GET">GET</span>
+            <span>/api/incidents?severity=critical</span>
+            <span style="color:var(--text-dim);margin-left:auto;font-size:11px">Filter by severity</span>
+          </div>
+          <div class="endpoint-item" onclick="hitEndpoint('GET', '/api/incidents/inc-001')">
+            <span class="method method-GET">GET</span>
+            <span>/api/incidents/inc-001</span>
+            <span style="color:var(--text-dim);margin-left:auto;font-size:11px">Get single incident</span>
+          </div>
+          <div class="endpoint-item" onclick="hitEndpoint('GET', '/healthz')">
+            <span class="method method-GET">GET</span>
+            <span>/healthz</span>
+            <span style="color:var(--text-dim);margin-left:auto;font-size:11px">Health check (no auth required)</span>
+          </div>
+        </div>
+        <div id="endpoint-log" class="request-log" style="display:none"></div>
+      </div>
+      <div class="incident-layout" style="margin-top:16px">
+        <div class="incident-table-wrap">
+          <h3>Incidents <button onclick="refreshIncidents()" class="btn-sm">Refresh</button></h3>
+          <table id="incident-table">
+            <thead>
+              <tr><th>ID</th><th>Title</th><th>Severity</th><th>Status</th><th>Reported By</th></tr>
+            </thead>
+            <tbody id="incident-tbody"></tbody>
+          </table>
+        </div>
+        <div class="incident-form-wrap">
+          <h3>Create Incident</h3>
+          <form id="create-form" onsubmit="createIncident(event)">
+            <input name="title" placeholder="Title" required>
+            <select name="severity" required>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <input name="description" placeholder="Description">
+            <input name="reportedBy" placeholder="Reported By">
+            <button type="submit" class="btn">Create</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Apicurio Registry -->
+    <section id="registry">
+      <h2>Apicurio Registry</h2>
+      <div id="registry-content">
+        <p id="registry-unavailable" style="display:none">Apicurio Registry URL not configured. Set APICURIO_REGISTRY_URL to enable.</p>
+        <div id="registry-spec"></div>
+        <button onclick="toggleRawSpec()" class="btn-sm" id="toggle-spec-btn" style="display:none">Show Raw YAML</button>
+        <pre id="registry-raw" class="yaml-block" style="display:none"></pre>
+      </div>
+    </section>
+
+    <!-- Section 5: AI Assistant -->
+    <section id="ai">
+      <h2>AI API Assistant</h2>
+      <div id="ai-unavailable" style="display:none">
+        <p style="color:var(--text-dim)">Set ANTHROPIC_API_KEY and APICURIO_REGISTRY_URL to enable.</p>
+      </div>
+      <div id="ai-container" style="display:none">
+        <div id="chat-messages"></div>
+        <div class="example-chips">
+          <button onclick="askAI('What endpoints are available?')" class="chip">What endpoints are available?</button>
+          <button onclick="askAI('How do I create a critical incident?')" class="chip">Create a critical incident</button>
+          <button onclick="askAI('How do I filter incidents by severity?')" class="chip">Filter by severity</button>
+        </div>
+        <form id="ai-form" onsubmit="submitAI(event)">
+          <input id="ai-input" placeholder="Ask about the API..." autocomplete="off">
+          <button type="submit" class="btn">Send</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

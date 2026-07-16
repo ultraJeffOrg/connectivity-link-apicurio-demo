@@ -144,6 +144,7 @@ spec:
                   namespace: incident-api
                   labels:
                     app.kubernetes.io/part-of: incident-api-demo
+                    kuadrant.io/gateway: "true"
                 spec:
                   gatewayClassName: openshift-default
                   listeners:
@@ -195,15 +196,14 @@ spec:
                 spec:
                   targetRef:
                     group: gateway.networking.k8s.io
-                    kind: HTTPRoute
-                    name: incident-api-route
-                  limits:
-                    per-client:
-                      rates:
-                        - limit: 50
-                          window: 10s
-                      counters:
-                        - expression: request.headers["x-forwarded-for"]
+                    kind: Gateway
+                    name: incident-api-gateway
+                  defaults:
+                    limits:
+                      global:
+                        rates:
+                          - limit: 50
+                            window: 10s
             - complianceType: musthave
               objectDefinition:
                 apiVersion: kuadrant.io/v1

@@ -5,6 +5,7 @@ metadata:
   namespace: incident-api
   labels:
     app.kubernetes.io/part-of: incident-api-demo
+    kuadrant.io/gateway: "true"
 spec:
   gatewayClassName: openshift-default
   listeners:
