@@ -261,8 +261,8 @@ spec:
                     path: /healthz
                     port: 80
                     protocol: HTTP
-                    failureThreshold: 3
-                    interval: 60s
+                    failureThreshold: 2
+                    interval: 20s
             # Route53 credentials pulled from policy namespace secret via hub-templates
             # Prerequisite: copy credentials into this namespace:
             #   oc get secret rhdp -n kube-system -o json | \
