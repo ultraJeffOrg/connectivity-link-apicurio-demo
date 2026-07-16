@@ -111,8 +111,33 @@ spec:
                 spec:
                   controllerName: openshift.io/gateway-controller/v1
 
-    # 4. Kuadrant CR to activate Connectivity Link
+    # 4. Wait for the RHCL operator CSV to be installed before creating Kuadrant CR
     - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: connectivity-link-csv-ready
+        spec:
+          remediationAction: inform
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: rhcl-operator
+                  namespace: kuadrant-system
+                status:
+                  state: AtLatestKnown
+
+    # 5. Kuadrant CR to activate Connectivity Link
+    - extraDependencies:
+        - apiVersion: policy.open-cluster-management.io/v1
+          kind: ConfigurationPolicy
+          name: connectivity-link-csv-ready
+          compliance: Compliant
+      objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
         metadata:

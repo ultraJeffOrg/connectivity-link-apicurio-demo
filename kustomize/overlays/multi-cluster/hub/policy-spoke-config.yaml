@@ -58,7 +58,6 @@ spec:
                     app: incident-api
                     app.kubernetes.io/part-of: incident-api-demo
                 spec:
-                  replicas: 1
                   selector:
                     matchLabels:
                       app: incident-api
@@ -123,8 +122,8 @@ spec:
                   annotations:
                     api-consumer: demo-client
                 type: Opaque
-                stringData:
-                  api_key: demo-key-12345
+                data:
+                  api_key: ZGVtby1rZXktMTIzNDU=
 
     # 3. Gateway, routing, RHCL policies, and DNS
     - objectDefinition:
@@ -228,7 +227,7 @@ spec:
                           selector:
                             matchLabels:
                               app.kubernetes.io/component: api-key
-                          allNamespaces: false
+                          allNamespaces: true
                         credentials:
                           customHeader:
                             name: x-api-key
