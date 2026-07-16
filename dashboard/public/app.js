@@ -23,14 +23,26 @@ async function init() {
 
 // --- Request Log Rendering ---
 
-function resolvedIpLabel(ip) {
-  if (!ip) return '';
-  const cluster = clusterAddresses[ip];
-  if (cluster) {
-    const meta = config.clusterMeta?.[cluster] || {};
-    return `<span class="routed-to">routed to <strong>${cluster}</strong> (${meta.cloud || '?'}) via ${ip}</span>`;
+function identifyIp(ip) {
+  if (!ip) return null;
+  for (const [addr, cluster] of Object.entries(clusterAddresses)) {
+    if (addr === ip || (addr.includes('.elb.') && ip === addr)) return cluster;
   }
-  return `<span class="routed-to">resolved to ${ip}</span>`;
+  return null;
+}
+
+function routedToLabel(entry) {
+  const ips = entry.resolvedIps || (entry.connectedIp ? [entry.connectedIp] : []);
+  if (!ips.length) return '';
+
+  const identified = ips.map(ip => {
+    const cluster = identifyIp(ip);
+    return cluster
+      ? `<strong>${cluster}</strong> (${config.clusterMeta?.[cluster]?.cloud || '?'})`
+      : ip;
+  });
+  const unique = [...new Set(identified)];
+  return `<span class="routed-to">DNS resolved to ${ips.join(', ')} &rarr; ${unique.join(', ')}</span>`;
 }
 
 function renderRequestLog(containerId, entry) {
@@ -42,7 +54,7 @@ function renderRequestLog(containerId, entry) {
     : entry.response.status === 429 ? 'status-429'
     : entry.response.status < 500 ? 'status-4xx' : 'status-5xx';
 
-  const routedLabel = entry.resolvedIp ? resolvedIpLabel(entry.resolvedIp) : '';
+  const routedLabel = routedToLabel(entry);
 
   const html = `
     <div class="req-entry" onclick="document.getElementById('${id}').classList.toggle('open')">
@@ -56,7 +68,7 @@ function renderRequestLog(containerId, entry) {
       <div class="req-detail" id="${id}">
         <h4>Request Headers</h4>
         <pre>${JSON.stringify(entry.request.headers, null, 2)}</pre>
-        ${entry.resolvedIp ? `<h4>Resolved IP</h4><pre>${entry.resolvedIp}${clusterAddresses[entry.resolvedIp] ? ' (' + clusterAddresses[entry.resolvedIp] + ')' : ''}</pre>` : ''}
+        ${entry.resolvedIps?.length ? `<h4>DNS Resolution</h4><pre>${entry.resolvedIps.join(', ')}</pre>` : ''}
         <h4>Response Headers</h4>
         <pre>${JSON.stringify(entry.response.headers, null, 2)}</pre>
         <h4>Response Body</h4>
@@ -83,6 +95,11 @@ async function refreshClusters() {
       c.gateway.addresses.forEach(a => {
         clusterAddresses[a.value] = c.cluster;
       });
+      if (c.gatewayIps) {
+        c.gatewayIps.forEach(ip => {
+          clusterAddresses[ip] = c.cluster;
+        });
+      }
     });
     renderClusters(clusters);
   } catch (e) {
@@ -100,19 +117,27 @@ function renderClusters(clusters) {
       return `<span class="val">${label}</span>`;
     }).join(', ') || '<span class="val fail">No address</span>';
 
+    const isServing = c.servingTraffic;
+    const isDown = c.deployment.desiredReplicas === 0 || c.deployment.readyReplicas === 0;
+    const statusLabel = isServing ? 'SERVING TRAFFIC' : isDown ? 'DOWN' : 'NOT SERVING';
+    const statusClass = isServing ? 'ok' : 'fail';
+    const cardClass = isDown ? 'unhealthy' : 'healthy';
+
     return `
-    <div class="cluster-card ${c.healthy ? 'healthy' : 'unhealthy'}">
+    <div class="cluster-card ${cardClass}">
       <div class="card-header">
         <span class="health-dot"></span>
         <span class="cluster-name">${c.cluster}</span>
         <span class="cloud-label ${cloudClass}">${meta.cloud || '?'} / ${meta.region || '?'}</span>
       </div>
-      <div class="stat"><label>Status</label> <span class="val ${c.healthy ? 'ok' : 'fail'}">${c.healthy ? 'HEALTHY' : 'DOWN'}</span></div>
-      <div class="stat"><label>Replicas</label> <span class="val ${c.deployment.readyReplicas > 0 ? 'ok' : 'fail'}">${c.deployment.readyReplicas}/${c.deployment.replicas}</span></div>
+      ${isDown ? '<div class="down-banner">DOWN</div>' : ''}
+      <div class="stat"><label>Status</label> <span class="val ${statusClass}">${statusLabel}</span></div>
+      <div class="stat"><label>Replicas</label> <span class="val ${c.deployment.readyReplicas > 0 ? 'ok' : 'fail'}">${c.deployment.readyReplicas}/${c.deployment.desiredReplicas || c.deployment.replicas}</span></div>
       <div class="stat"><label>Gateway</label> ${gwAddr}</div>
-      <div class="stat"><label>DNS</label> <span class="val ${c.dns.enforced ? 'ok' : 'fail'}">${c.dns.enforced ? 'Enforced' : 'Not enforced'}${c.dns.healthy ? ', Healthy' : ''}</span></div>
+      <div class="stat"><label>IPs</label> <span class="val">${(c.gatewayIps || []).join(', ') || 'none'}</span></div>
+      <div class="stat"><label>DNS</label> <span class="val ${c.dns.healthy ? 'ok' : 'fail'}">${c.dns.healthy ? 'Healthy' : 'Unhealthy'}${c.dns.enforced ? ', Enforced' : ''}</span></div>
       <div class="card-actions">
-        ${c.deployment.readyReplicas > 0
+        ${!isDown
           ? `<button class="btn btn-danger" onclick="scaleCluster('${c.cluster}', 0)">Take ${c.cluster} Down</button>`
           : `<button class="btn btn-success" onclick="scaleCluster('${c.cluster}', 1)">Bring ${c.cluster} Back Up</button>`}
       </div>
@@ -155,7 +180,11 @@ async function refreshDns() {
     if (data.addresses.length > 0) {
       const labeled = data.addresses.map(ip => {
         const cluster = clusterAddresses[ip];
-        return cluster ? `${ip} <span style="color:var(--text-dim)">(${cluster})</span>` : ip;
+        const meta = cluster ? config.clusterMeta?.[cluster] : null;
+        if (cluster) {
+          return `${ip} <span style="color:var(--neon-purple)">(${cluster} / ${meta?.cloud || '?'})</span>`;
+        }
+        return ip;
       });
       el.innerHTML = `${data.hostname} &rarr; ${labeled.join(', ')}`;
     } else if (data.cname?.length > 0) {
@@ -208,7 +237,7 @@ async function testRateLimit() {
       const cls = status === '200' ? 'status-2xx' : status === '429' ? 'status-429' : 'status-5xx';
       return `<span class="badge ${cls}" style="background:rgba(${status==='200'?'0,255,136':'255,136,0'},0.15)">${count}x ${status}</span>`;
     });
-    const rlRouted = data.resolvedIp ? resolvedIpLabel(data.resolvedIp) : '';
+    const rlRouted = data.resolvedIps?.length ? routedToLabel(data) : '';
     result.innerHTML = `Sent ${data.total} to <span style="color:var(--neon-cyan)">${data.request.url}</span>: ${badges.join(' ')}${rlRouted ? '<br>' + rlRouted : ''}`;
 
     const log = document.getElementById('ratelimit-log');

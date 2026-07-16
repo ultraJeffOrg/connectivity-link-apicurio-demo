@@ -1,5 +1,13 @@
+const dns = require('dns');
 const { viewResource } = require('./managed-cluster-view');
 const { executeAction } = require('./managed-cluster-action');
+
+function resolveHostname(hostname) {
+  return new Promise((resolve) => {
+    const resolver = new dns.Resolver();
+    resolver.resolve4(hostname, (err, ips) => resolve(err ? [] : ips));
+  });
+}
 
 async function getClusterStatus(cluster) {
   const [deployment, gateway, dnsPolicy] = await Promise.all([
@@ -19,6 +27,7 @@ async function getClusterStatus(cluster) {
 
   const replicas = deployment?.status?.replicas || 0;
   const readyReplicas = deployment?.status?.readyReplicas || 0;
+  const desiredReplicas = deployment?.spec?.replicas ?? 1;
   const addresses = gateway?.status?.addresses || [];
   const gwConditions = gateway?.status?.conditions || [];
   const dnsConditions = dnsPolicy?.status?.conditions || [];
@@ -26,21 +35,36 @@ async function getClusterStatus(cluster) {
 
   const programmed = gwConditions.find(c => c.type === 'Programmed');
   const enforced = dnsConditions.find(c => c.type === 'Enforced');
-  const healthy = dnsConditions.find(c => c.type === 'SubResourcesHealthy');
+  const dnsHealthy = dnsConditions.find(c => c.type === 'SubResourcesHealthy');
+
+  // Resolve hostname-type addresses (ELB) to actual IPs
+  let gatewayIps = [];
+  for (const addr of addresses) {
+    if (addr.type === 'IPAddress') {
+      gatewayIps.push(addr.value);
+    } else if (addr.type === 'Hostname') {
+      const resolved = await resolveHostname(addr.value);
+      gatewayIps.push(...resolved);
+    }
+  }
+
+  const appUp = readyReplicas > 0 && desiredReplicas > 0;
 
   return {
     cluster,
-    deployment: { replicas, readyReplicas },
+    deployment: { replicas, readyReplicas, desiredReplicas },
     gateway: {
       addresses: addresses.map(a => ({ type: a.type, value: a.value })),
       programmed: programmed?.status === 'True',
     },
+    gatewayIps,
     dns: {
       enforced: enforced?.status === 'True',
-      healthy: healthy?.status === 'True',
+      healthy: dnsHealthy?.status === 'True',
       records: recordConditions,
     },
-    healthy: readyReplicas > 0 && programmed?.status === 'True',
+    healthy: appUp && programmed?.status === 'True',
+    servingTraffic: appUp && dnsHealthy?.status === 'True',
   };
 }
 
@@ -63,16 +87,23 @@ async function getClusterPolicies(cluster) {
 }
 
 async function scaleDeployment(cluster, replicas) {
+  const deploy = await viewResource(cluster, {
+    apiGroup: 'apps', kind: 'Deployment', version: 'v1',
+    name: 'incident-api', namespace: 'incident-api',
+  }, `getdeploy-${cluster}`);
+
+  if (!deploy) throw new Error('Deployment not found');
+
+  deploy.spec.replicas = replicas;
+  delete deploy.metadata.managedFields;
+  delete deploy.metadata.resourceVersion;
+  delete deploy.status;
+
   return executeAction(cluster, 'Update', {
     resource: 'deployments',
     namespace: 'incident-api',
     name: 'incident-api',
-    template: {
-      apiVersion: 'apps/v1',
-      kind: 'Deployment',
-      metadata: { name: 'incident-api', namespace: 'incident-api' },
-      spec: { replicas },
-    },
+    template: deploy,
   }, `scale-${cluster}`);
 }
 

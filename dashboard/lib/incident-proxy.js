@@ -1,4 +1,4 @@
-const dns = require('dns').promises;
+const dns = require('dns');
 
 const INCIDENT_HOST = process.env.INCIDENT_API_HOST || 'incidents.sandbox4020.opentlc.com';
 const API_KEY = process.env.INCIDENT_API_KEY || 'demo-key-12345';
@@ -7,13 +7,13 @@ function baseUrl() {
   return `http://${INCIDENT_HOST}`;
 }
 
-async function resolveHost() {
-  try {
-    const ips = await dns.resolve4(INCIDENT_HOST);
-    return ips[0] || null;
-  } catch {
-    return null;
-  }
+async function resolveHostFresh() {
+  return new Promise((resolve) => {
+    const resolver = new dns.Resolver();
+    resolver.resolve4(INCIDENT_HOST, (err, ips) => {
+      resolve(err ? [] : ips);
+    });
+  });
 }
 
 async function proxyRequest(method, path, { body, withApiKey = true } = {}) {
@@ -21,7 +21,7 @@ async function proxyRequest(method, path, { body, withApiKey = true } = {}) {
   const reqHeaders = { 'Content-Type': 'application/json' };
   if (withApiKey) reqHeaders['x-api-key'] = API_KEY;
 
-  const resolvedIp = await resolveHost();
+  const resolvedIps = await resolveHostFresh();
 
   const opts = { method, headers: reqHeaders };
   if (body) opts.body = JSON.stringify(body);
@@ -45,15 +45,16 @@ async function proxyRequest(method, path, { body, withApiKey = true } = {}) {
       headers: Object.fromEntries(resp.headers),
       body: data,
     },
-    resolvedIp,
+    resolvedIps,
     duration,
   };
 }
 
 async function blastRateLimit(count = 60) {
   const url = `${baseUrl()}/api/incidents`;
-  const resolvedIp = await resolveHost();
+  const resolvedIps = await resolveHostFresh();
   const results = [];
+
   const promises = [];
   for (let i = 0; i < count; i++) {
     promises.push(
@@ -71,7 +72,7 @@ async function blastRateLimit(count = 60) {
   }
   return {
     request: { method: 'GET', url, headers: { 'x-api-key': API_KEY } },
-    resolvedIp,
+    resolvedIps,
     total: count,
     summary,
     results,
