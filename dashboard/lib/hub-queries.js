@@ -87,12 +87,16 @@ async function getClusterPolicies(cluster) {
 }
 
 async function scaleDeployment(cluster, replicas) {
-  const deploy = await viewResource(cluster, {
-    apiGroup: 'apps', kind: 'Deployment', version: 'v1',
-    name: 'incident-api', namespace: 'incident-api',
-  }, `getdeploy-${cluster}`);
-
-  if (!deploy) throw new Error('Deployment not found');
+  let deploy;
+  try {
+    deploy = await viewResource(cluster, {
+      apiGroup: 'apps', kind: 'Deployment', version: 'v1',
+      name: 'incident-api', namespace: 'incident-api',
+    }, `getdeploy-${cluster}`);
+  } catch (e) {
+    throw new Error(`Could not read Deployment on ${cluster}: ${e.message}`);
+  }
+  if (!deploy?.spec) throw new Error(`Deployment not found on ${cluster}`);
 
   deploy.spec.replicas = replicas;
   delete deploy.metadata.managedFields;

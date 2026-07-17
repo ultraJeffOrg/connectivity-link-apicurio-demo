@@ -8,3 +8,4 @@ resources:
   - placement-binding-operators.yaml
   - policy-spoke-operators.yaml
   - policy-spoke-config.yaml
+  - dashboard.yaml

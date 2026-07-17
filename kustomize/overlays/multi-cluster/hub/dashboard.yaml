@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhcl-dashboard
+  namespace: incident-api-policies
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rhcl-dashboard
+rules:
+  - apiGroups: ["view.open-cluster-management.io"]
+    resources: ["managedclusterviews"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: ["action.open-cluster-management.io"]
+    resources: ["managedclusteractions"]
+    verbs: ["create", "get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhcl-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rhcl-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: rhcl-dashboard
+    namespace: incident-api-policies
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rhcl-dashboard
+  namespace: incident-api-policies
+  labels:
+    app: rhcl-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rhcl-dashboard
+  template:
+    metadata:
+      labels:
+        app: rhcl-dashboard
+    spec:
+      serviceAccountName: rhcl-dashboard
+      containers:
+        - name: dashboard
+          image: quay.io/jefrankl/rhcl-dashboard:latest
+          ports:
+            - containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: INCIDENT_API_HOST
+              value: incidents.sandbox4020.opentlc.com
+            - name: SPOKE_CLUSTERS
+              value: blue,aws-ai
+          livenessProbe:
+            httpGet:
+              path: /api/config
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/config
+              port: 4000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rhcl-dashboard
+  namespace: incident-api-policies
+spec:
+  selector:
+    app: rhcl-dashboard
+  ports:
+    - port: 4000
+      targetPort: 4000
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: rhcl-dashboard
+  namespace: incident-api-policies
+spec:
+  to:
+    kind: Service
+    name: rhcl-dashboard
+  port:
+    targetPort: 4000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

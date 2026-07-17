@@ -168,7 +168,10 @@ async function scaleCluster(cluster, replicas) {
 
     setTimeout(refreshClusters, 3000);
   } catch (e) {
-    alert(`Error: ${e.message}`);
+    const log = document.getElementById('failover-log');
+    log.style.display = 'block';
+    const time = new Date().toLocaleTimeString();
+    log.insertAdjacentHTML('afterbegin', `<div class="req-entry"><div class="req-summary"><span style="color:var(--neon-red)">[${time}] Error: ${e.message}</span></div></div>`);
   }
 }
 
@@ -203,7 +206,7 @@ async function testEndpoint() {
     const data = await resp.json();
     renderRequestLog('failover-log', data);
   } catch (e) {
-    alert(`Error: ${e.message}`);
+    console.error(e);
   }
 }
 
@@ -270,7 +273,7 @@ async function testAuth(withKey) {
     const data = await resp.json();
     renderRequestLog('auth-log', data);
   } catch (e) {
-    alert(`Error: ${e.message}`);
+    console.error(e);
   }
 }
 
@@ -286,7 +289,7 @@ async function hitEndpoint(method, path) {
     const data = await resp.json();
     renderRequestLog('endpoint-log', data);
   } catch (e) {
-    alert(`Error: ${e.message}`);
+    console.error(e);
   }
 }
 
@@ -330,7 +333,7 @@ async function createIncident(e) {
     form.reset();
     refreshIncidents();
   } catch (e) {
-    alert(`Error: ${e.message}`);
+    console.error(e);
   }
 }
 
